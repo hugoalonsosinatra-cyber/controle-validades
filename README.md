@@ -4,7 +4,9 @@ Aplicação web simples, em um único arquivo HTML, para cadastrar produtos e ac
 
 ## Como usar
 
-Não precisa instalar nada — basta abrir o arquivo [`validades.html`](validades.html) em qualquer navegador moderno (Chrome, Edge, Firefox).
+Acesse o site publicado: **https://hugoalonsosinatra-cyber.github.io/controle-validades/**
+
+Ou, se preferir usar localmente, basta abrir o arquivo [`index.html`](index.html) em qualquer navegador moderno (Chrome, Edge, Firefox) — não precisa instalar nada.
 
 Os dados ficam salvos no próprio navegador (localStorage). Ou seja: cada navegador/computador tem a sua própria lista. Para levar os dados de um lugar para outro, use os botões **Exportar CSV** e **Importar**.
 
@@ -21,7 +23,7 @@ Os dados ficam salvos no próprio navegador (localStorage). Ou seja: cada navega
 
 | Arquivo | Descrição |
 | --- | --- |
-| `validades.html` | A aplicação completa (HTML + CSS + JavaScript, sem dependências) |
+| `index.html` | A aplicação completa (HTML + CSS + JavaScript, sem dependências) |
 | `produtos_iniciais.csv` | Lista inicial de produtos para importar pela função **Importar** |
 
 ## Formato do CSV
