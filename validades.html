@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Validades</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1e2a36;
+    --muted: #6b7a8a;
+    --border: #e1e6ec;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --orange: #d97706;
+    --orange-bg: #fffbeb;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); margin-bottom: 20px; font-size: .95rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; cursor: pointer; transition: box-shadow .15s;
+  }
+  .stat:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .stat.active { outline: 2px solid var(--primary); }
+  .stat .num { font-size: 1.7rem; font-weight: 700; }
+  .stat .label { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .stat.vencidos .num { color: var(--red); }
+  .stat.urgentes .num { color: var(--orange); }
+  .stat.ok .num { color: var(--green); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px; margin-bottom: 20px;
+  }
+  .card h2 { font-size: 1.05rem; margin-bottom: 12px; }
+
+  form .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  form .field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; }
+  form label { font-size: .8rem; color: var(--muted); font-weight: 600; }
+  input, select {
+    padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: .95rem; background: #fff; color: var(--text); width: 100%;
+  }
+  input:focus, select:focus { outline: 2px solid var(--primary); border-color: transparent; }
+  button {
+    padding: 9px 18px; border: none; border-radius: 8px; font-size: .95rem;
+    cursor: pointer; font-weight: 600;
+  }
+  .btn-primary { background: var(--primary); color: #fff; align-self: flex-end; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; align-items: flex-end; }
+  .toolbar .filtro { display: flex; flex-direction: column; gap: 4px; }
+  .toolbar .filtro label { font-size: .78rem; color: var(--muted); font-weight: 600; }
+  .toolbar input[type=search] { flex: 1; min-width: 180px; }
+  .toolbar .filtro.busca { flex: 1 1 200px; }
+  .toolbar input[type=date] { width: 160px; }
+  .toolbar input[type=number] { width: 130px; }
+  .toolbar select { width: 170px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: .93rem; }
+  th { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; }
+  tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: .78rem; font-weight: 600; white-space: nowrap;
+  }
+  .badge.vencido { background: var(--red-bg); color: var(--red); }
+  .badge.urgente { background: var(--orange-bg); color: var(--orange); }
+  .badge.ok { background: var(--green-bg); color: var(--green); }
+
+  .actions button {
+    padding: 5px 10px; font-size: .8rem; margin-right: 4px;
+  }
+  .btn-edit { background: #eef2ff; color: var(--primary); }
+  .btn-del { background: var(--red-bg); color: var(--red); }
+
+  .empty { text-align: center; color: var(--muted); padding: 30px 0; }
+  .io-buttons { display: flex; gap: 8px; margin-left: auto; }
+
+  @media (max-width: 640px) {
+    body { padding: 10px; }
+    th:nth-child(3), td:nth-child(3) { display: none; } /* esconde categoria no celular */
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📦 Controle de Validades</h1>
+  <p class="subtitle">Cadastre seus produtos e acompanhe o que está vencendo. Os dados ficam salvos neste navegador.</p>
+
+  <div class="stats">
+    <div class="stat" data-filtro="todos"><div class="num" id="stTotal">0</div><div class="label">Total</div></div>
+    <div class="stat vencidos" data-filtro="vencido"><div class="num" id="stVencidos">0</div><div class="label">Vencidos</div></div>
+    <div class="stat urgentes" data-filtro="urgente"><div class="num" id="stUrgentes">0</div><div class="label">Vencem em 7 dias</div></div>
+    <div class="stat ok" data-filtro="ok"><div class="num" id="stOk">0</div><div class="label">Dentro do prazo</div></div>
+  </div>
+
+  <div class="card">
+    <h2 id="formTitulo">Adicionar produto</h2>
+    <form id="form">
+      <div class="row">
+        <div class="field" style="flex:2 1 200px">
+          <label for="nome">Produto *</label>
+          <input id="nome" required placeholder="Ex.: Leite integral 1L">
+        </div>
+        <div class="field">
+          <label for="categoria">Categoria</label>
+          <input id="categoria" list="categorias" placeholder="Ex.: Laticínios">
+          <datalist id="categorias"></datalist>
+        </div>
+        <div class="field" style="flex:0 1 110px">
+          <label for="quantidade">Qtde</label>
+          <input id="quantidade" type="number" min="1" value="1">
+        </div>
+        <div class="field" style="flex:0 1 170px">
+          <label for="validade">Validade *</label>
+          <input id="validade" type="date" required>
+        </div>
+        <div class="field" style="flex:0 0 auto; justify-content:flex-end">
+          <button type="submit" class="btn-primary" id="btnSalvar">Adicionar</button>
+        </div>
+        <div class="field" style="flex:0 0 auto; justify-content:flex-end; display:none" id="wrapCancelar">
+          <button type="button" class="btn-ghost" id="btnCancelar">Cancelar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="filtro busca">
+        <label for="busca">Nome</label>
+        <input type="search" id="busca" placeholder="🔍 Buscar produto ou categoria...">
+      </div>
+      <div class="filtro">
+        <label for="filtroData">Data de validade</label>
+        <input type="date" id="filtroData">
+      </div>
+      <div class="filtro">
+        <label for="filtroDias">Vence em até (dias)</label>
+        <input type="number" id="filtroDias" min="0" placeholder="Ex.: 30">
+      </div>
+      <div class="filtro">
+        <label for="filtroStatus">Status</label>
+        <select id="filtroStatus">
+          <option value="todos">Todos os status</option>
+          <option value="vencido">Vencidos</option>
+          <option value="urgente">Vencem em 7 dias</option>
+          <option value="ok">Dentro do prazo</option>
+        </select>
+      </div>
+      <button class="btn-ghost" id="btnLimparFiltros" title="Limpa todos os filtros">Limpar</button>
+      <div class="io-buttons">
+        <button class="btn-ghost" id="btnExportar" title="Baixa um arquivo CSV com todos os produtos">Exportar CSV</button>
+        <button class="btn-ghost" id="btnImportar" title="Importa um CSV exportado anteriormente">Importar</button>
+        <input type="file" id="arquivoImport" accept=".csv" hidden>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Produto</th><th>Validade</th><th>Categoria</th><th>Qtde</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody id="lista"></tbody>
+    </table>
+    <div class="empty" id="vazio" hidden>Nenhum produto encontrado. Adicione o primeiro acima! 👆</div>
+  </div>
+</div>
+
+<script>
+const CHAVE = 'validades-produtos';
+let produtos = [];
+try {
+  const salvos = JSON.parse(localStorage.getItem(CHAVE) || '[]');
+  if (Array.isArray(salvos)) produtos = salvos;
+} catch (erro) {
+  alert('Não foi possível ler os dados salvos neste navegador. A lista será iniciada vazia — use Importar para recuperar um backup CSV.');
+}
+let editandoId = null;
+
+const $ = id => document.getElementById(id);
+
+function salvar() {
+  localStorage.setItem(CHAVE, JSON.stringify(produtos));
+}
+
+function hoje() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function diasRestantes(dataISO) {
+  const [a, m, d] = dataISO.split('-').map(Number);
+  const validade = new Date(a, m - 1, d);
+  return Math.round((validade - hoje()) / 86400000);
+}
+
+function statusDe(p) {
+  const dias = diasRestantes(p.validade);
+  if (dias < 0) return 'vencido';
+  if (dias <= 7) return 'urgente';
+  return 'ok';
+}
+
+function textoStatus(p) {
+  const dias = diasRestantes(p.validade);
+  if (dias < 0) return `Vencido há ${-dias} dia${dias === -1 ? '' : 's'}`;
+  if (dias === 0) return 'Vence hoje!';
+  if (dias === 1) return 'Vence amanhã';
+  if (dias <= 7) return `Vence em ${dias} dias`;
+  return `${dias} dias restantes`;
+}
+
+function formatarData(dataISO) {
+  const [a, m, d] = dataISO.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+function render() {
+  const busca = $('busca').value.trim().toLowerCase();
+  const filtro = $('filtroStatus').value;
+  const filtroData = $('filtroData').value;
+  const filtroDias = $('filtroDias').value === '' ? null : parseInt($('filtroDias').value);
+
+  const visiveis = produtos
+    .filter(p => {
+      const combina = p.nome.toLowerCase().includes(busca) ||
+                      (p.categoria || '').toLowerCase().includes(busca);
+      const st = statusDe(p);
+      if (!combina || (filtro !== 'todos' && st !== filtro)) return false;
+      if (filtroData && p.validade !== filtroData) return false;
+      if (filtroDias !== null && !isNaN(filtroDias)) {
+        const dias = diasRestantes(p.validade);
+        if (dias < 0 || dias > filtroDias) return false; // exclui vencidos e além do prazo
+      }
+      return true;
+    })
+    .sort((a, b) => a.validade.localeCompare(b.validade));
+
+  const tbody = $('lista');
+  tbody.innerHTML = '';
+  for (const p of visiveis) {
+    const st = statusDe(p);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${escapar(p.nome)}</strong></td>
+      <td>${formatarData(p.validade)}</td>
+      <td>${escapar(p.categoria || '—')}</td>
+      <td>${p.quantidade || 1}</td>
+      <td><span class="badge ${st}">${textoStatus(p)}</span></td>
+      <td class="actions">
+        <button class="btn-edit" data-acao="editar" data-id="${p.id}">✏️</button>
+        <button class="btn-del" data-acao="excluir" data-id="${p.id}">🗑️</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+  $('vazio').hidden = visiveis.length > 0;
+  $('vazio').textContent = produtos.length === 0
+    ? 'Nenhum produto cadastrado. Adicione o primeiro acima! 👆'
+    : 'Nenhum produto corresponde aos filtros. Clique em "Limpar" para ver todos.';
+
+  // estatísticas (sempre sobre o total, não sobre o filtro)
+  $('stTotal').textContent = produtos.length;
+  $('stVencidos').textContent = produtos.filter(p => statusDe(p) === 'vencido').length;
+  $('stUrgentes').textContent = produtos.filter(p => statusDe(p) === 'urgente').length;
+  $('stOk').textContent = produtos.filter(p => statusDe(p) === 'ok').length;
+
+  document.querySelectorAll('.stat').forEach(s =>
+    s.classList.toggle('active', s.dataset.filtro === filtro));
+
+  // sugestões de categoria
+  const cats = [...new Set(produtos.map(p => p.categoria).filter(Boolean))].sort();
+  $('categorias').innerHTML = cats.map(c => `<option value="${escapar(c)}">`).join('');
+}
+
+function escapar(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML.replace(/"/g, '&quot;');
+}
+
+$('form').addEventListener('submit', e => {
+  e.preventDefault();
+  const dados = {
+    nome: $('nome').value.trim(),
+    categoria: $('categoria').value.trim(),
+    quantidade: parseInt($('quantidade').value) || 1,
+    validade: $('validade').value
+  };
+  if (editandoId !== null) {
+    const p = produtos.find(p => p.id === editandoId);
+    Object.assign(p, dados);
+    cancelarEdicao();
+  } else {
+    produtos.push({ id: Date.now(), ...dados });
+    e.target.reset();
+    $('quantidade').value = 1;
+    $('nome').focus();
+  }
+  salvar();
+  render();
+});
+
+function cancelarEdicao() {
+  editandoId = null;
+  $('form').reset();
+  $('quantidade').value = 1;
+  $('formTitulo').textContent = 'Adicionar produto';
+  $('btnSalvar').textContent = 'Adicionar';
+  $('wrapCancelar').style.display = 'none';
+}
+
+$('btnCancelar').addEventListener('click', cancelarEdicao);
+
+$('lista').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-acao]');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  const p = produtos.find(p => p.id === id);
+  if (!p) return;
+  if (btn.dataset.acao === 'excluir') {
+    if (confirm(`Excluir "${p.nome}"?`)) {
+      produtos = produtos.filter(p => p.id !== id);
+      salvar();
+      render();
+      if (editandoId === id) cancelarEdicao();
+    }
+  } else if (btn.dataset.acao === 'editar') {
+    editandoId = id;
+    $('nome').value = p.nome;
+    $('categoria').value = p.categoria || '';
+    $('quantidade').value = p.quantidade || 1;
+    $('validade').value = p.validade;
+    $('formTitulo').textContent = `Editando: ${p.nome}`;
+    $('btnSalvar').textContent = 'Salvar';
+    $('wrapCancelar').style.display = 'flex';
+    $('nome').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+$('busca').addEventListener('input', render);
+$('filtroStatus').addEventListener('change', render);
+$('filtroData').addEventListener('change', render);
+$('filtroDias').addEventListener('input', render);
+
+$('btnLimparFiltros').addEventListener('click', () => {
+  $('busca').value = '';
+  $('filtroData').value = '';
+  $('filtroDias').value = '';
+  $('filtroStatus').value = 'todos';
+  render();
+});
+
+document.querySelectorAll('.stat').forEach(s => {
+  s.addEventListener('click', () => {
+    $('filtroStatus').value = s.dataset.filtro;
+    render();
+  });
+});
+
+// ---- Exportar / Importar CSV ----
+$('btnExportar').addEventListener('click', () => {
+  const linhas = [['nome', 'categoria', 'quantidade', 'validade']];
+  for (const p of produtos) {
+    linhas.push([p.nome, p.categoria || '', p.quantidade || 1, p.validade]);
+  }
+  const csv = linhas.map(l => l.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'validades.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$('btnImportar').addEventListener('click', () => $('arquivoImport').click());
+$('arquivoImport').addEventListener('change', e => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  const leitor = new FileReader();
+  leitor.onload = () => {
+    const linhas = leitor.result.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+    let importados = 0, duplicados = 0, invalidos = 0;
+    for (const linha of linhas.slice(1)) { // pula cabeçalho
+      const campos = (linha.match(/("([^"]|"")*"|[^;]*)(;|$)/g) || [])
+        .map(c => c.replace(/;$/, '').replace(/^"|"$/g, '').replace(/""/g, '"'));
+      const [nome, categoria, quantidade, validade] = campos;
+      if (!nome || !/^\d{4}-\d{2}-\d{2}$/.test(validade)) { invalidos++; continue; }
+      if (produtos.some(p => p.nome === nome && p.validade === validade)) { duplicados++; continue; }
+      produtos.push({ id: Date.now() + importados, nome, categoria, quantidade: parseInt(quantidade) || 1, validade });
+      importados++;
+    }
+    salvar();
+    render();
+    let msg = `${importados} produto(s) importado(s).`;
+    if (duplicados) msg += `\n${duplicados} já existia(m) e foi(ram) ignorado(s).`;
+    if (invalidos) msg += `\n${invalidos} linha(s) com dados incompletos foi(ram) ignorada(s).`;
+    alert(msg);
+    e.target.value = '';
+  };
+  leitor.readAsText(arquivo, 'utf-8');
+});
+
+render();
+</script>
+</body>
+</html>
